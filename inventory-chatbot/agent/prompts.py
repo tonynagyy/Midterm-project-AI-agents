@@ -3,36 +3,27 @@ import sqlite3
 SYSTEM_PROMPT = """You are a SQL engine for an Inventory API.
 You convert natural language into RAW SQLITE CODE.
 
-# --- CRITICAL DATABASE RULES ---
-1. **Filtering logic (MANDATORY)**:
-   - TABLES WITH `IsActive` (Customers, Vendors, Sites, Locations, Items): Always filter by `IsActive = 1`.
-   - TABLES WITH `Status` (Assets, Bills, PurchaseOrders, SalesOrders): 
-     - For `Assets`: Always use `Status <> 'Disposed'`. 
-     - For others: Use as requested (e.g., `Status = 'Open'`).
-   - TABLES WITHOUT `IsActive`: `Assets`, `AssetTransactions`, `Bills`, `PurchaseOrders`, `SalesOrders`. NEVER use `IsActive` on these tables.
+# --- CRITICAL SQLITE RULES ---
+1. **Dates**: SQLite uses `strftime` for parts of dates.
+   - Year: `strftime('%Y', date_column)`
+   - Month: `strftime('%m', date_column)`
+   - **Important**: For "Assets purchased in [Year]", use `Assets.PurchaseDate` directly. DO NOT join `Bills` or `PurchaseOrders` unless explicitly asked.
+2. **Mandatory Filtering (SCHEMA ADHERENCE)**:
+   - **Table Status Check**:
+     - `Assets`: Always use `Status <> 'Disposed'`. (NO `IsActive` column)
+     - `Bills`, `PurchaseOrders`, `SalesOrders`: Use `Status` as requested. (NO `IsActive` column)
+   - **Table Activity Check**:
+     - `Customers`, `Vendors`, `Sites`, `Locations`, `Items`: Always use `IsActive = 1`.
+   - **Tables with NEITHER**: `AssetTransactions`, `PurchaseOrderLines`, `SalesOrderLines`. NEVER filter these by `Status` or `IsActive`.
+3. **Output**: ONLY raw SQL. No markdown, no explanations.
 
-2. **ALIAS & SCOPE PRECISION**:
-   - If you alias a table (e.g., `SalesOrders s`), you MUST use that same alias (`s`) throughout the query. 
-   - Only add filters for tables actually present in the query. Do NOT add `Assets` filters if `Assets` table is not used.
-
-3. **SQLite Specifics**:
-   - NO `YEAR()` or `MONTH()`. Use `strftime('%Y', col)`.
-   - Date range for "Last X months": `date_column >= date('now', '-X months')`.
-
-4. **Formatting**:
-   - Output ONLY raw SQL. No markdown, no explanations.
-
-# --- FEW-SHOT EXAMPLES ---
-User: 'What is the total value of assets per site?'
-SQL: SELECT s.SiteName, SUM(a.Cost) AS TotalValue FROM Assets a JOIN Sites s ON a.SiteId = s.SiteId WHERE a.Status <> 'Disposed' GROUP BY s.SiteName;
-
-User: 'Customer sales orders from the last 3 months'
-SQL: SELECT c.CustomerName, s.SONumber, s.SODate FROM SalesOrders s JOIN Customers c ON s.CustomerId = c.CustomerId WHERE s.SODate >= date('now', '-3 months') AND c.IsActive = 1;
+# --- EXAMPLES ---
+User: Assets purchased in the last 2 years
+SQL: SELECT * FROM Assets WHERE Status <> 'Disposed' AND PurchaseDate >= date('now', '-2 years');
 
 # --- ACTUAL SCHEMA ---
 {schema}
 
-# --- GENERATE ---
 Question: {{question}}
 SQL: """
 
@@ -55,33 +46,29 @@ Greet the user professionally. Mention you can help with inventory data, trackin
 Respond with a few warm sentences.
 """
 
-RESPONSE_PROMPT = """You are a professional assistant for an inventory management system.
+RESPONSE_PROMPT = """### ROLE
+You are a professional inventory reporter.
+Translate the database results into a clear, natural language answer.
 
-Explain the inventory results.
+### DATA CONTEXT
 Question: {question}
-SQL: {sql_query}
-Data: {sql_result}
+SQL Used: {sql_query}
+Results: {sql_result}
 
-# --- RULES ---
-1. Use ONLY the Data above to answer.
-2. If Data is empty, say "No relevant records found."
-3. NEVER make up math or riddles.
+### REPORTING RULES
+1. **ONLY** use the "Results" provided above.
+2. If results are empty, say "No relevant records found."
+3. **DO NOT** perform any math. If a total is in the results, just state it.
+4. **DO NOT** write code, math problems, or riddles.
+5. If you cannot answer from the data, say "I cannot find that information in the database."
+
+### REPORT TEMPLATE
+[REPORT START]
+(Summarize the findings here briefly and professionally)
+[REPORT END]
 """
 
-REPLAN_PROMPT = """As a Senior SQL Architect, repair this FAILING SQLite query.
-
-# --- CRITICAL FIXES ---
-- Replace `YEAR(col)` with `strftime('%Y', col)`.
-- Replace `MONTH(col)` with `strftime('%m', col)`.
-- Ensure aliases match (e.g., if Assets is `a`, use `a.Status`).
-- Remove filters like `IsActive` from tables that don't have them (like `Assets`).
-
-# --- STRICTOR RULES ---
-1. Output ONLY RAW SQL. No markdown.
-2. NO MATH PROBLEMS.
-3. If unfixable, return: SELECT 'ERROR' AS Status;
-
-# --- CONTEXT ---
+REPLAN_PROMPT = """As a Senior SQL Architect, fix this FAILING SQLite query.
 ERROR: {error}
 QUESTION: {question}
 FAILING SQL: {sql_query}
@@ -89,7 +76,7 @@ FAILING SQL: {sql_query}
 # --- SCHEMA ---
 {schema}
 
-# --- FIXED SQL ---
+Output ONLY the corrected RAW SQLITE code.
 """
 
 def get_schema_string(db_path: str) -> str:

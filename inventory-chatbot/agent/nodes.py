@@ -9,6 +9,21 @@ from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from .state import AgentState
 from .prompts import ROUTER_PROMPT, SYSTEM_PROMPT, CHAT_PROMPT, RESPONSE_PROMPT, REPLAN_PROMPT, get_schema_string
 
+def is_hallucination(text: str) -> bool:
+    """Detects common math-problem hallucination patterns."""
+    patterns = [
+        r"Let [a-z]\([a-z]\) =", 
+        r"Solve (for )?[a-z]",
+        r"Suppose -?[a-z]+[+-]",
+        r"Answer: \d+",
+        r"y\(q\) =",
+        r"w\(q\) ="
+    ]
+    for p in patterns:
+        if re.search(p, text, re.IGNORECASE):
+            return True
+    return False
+
 load_dotenv()
 
 # Setup model based on .env
@@ -23,6 +38,9 @@ else:
 
 def extract_sql(text: str) -> str:
     """Extracts raw SQL from LLM response by stripping markdown and chat text."""
+    # 0. Check for hallucinations
+    if is_hallucination(text):
+        return "-- ERROR: Hallucination detected"
     # 1. Try markdown blocks first
     match = re.search(r'```(?:sql)?\n?(.*?)\n?```', text, re.DOTALL | re.IGNORECASE)
     if match: return match.group(1).strip()
@@ -109,9 +127,15 @@ def sql_corrector_node(state: AgentState):
     response = llm.invoke([SystemMessage(content=p)])
     sql_query = extract_sql(response.content)
     
-    if any(k in sql_query for k in ["Question:", "Let ", "Solve ", "Answer:"]):
-        print("Hallucination detected. Halting loop.")
-        return {"revision_count": state['revision_count'] + 1, "latency_ms": int((time.time() - start_time) * 1000)}
+    # IMPROVED HALLUCINATION CHECK:
+    # If the LLM returns prose instead of SQL, force a loop break by setting a final error.
+    if any(k in sql_query for k in ["Question:", "Let ", "Solve ", "Answer:", "I apologize"]):
+        print("Hallucination detected. Breaking loop.")
+        return {
+            "revision_count": 4, # Force termination in should_continue
+            "error": "The system was unable to generate a valid database query.",
+            "latency_ms": int((time.time() - start_time) * 1000)
+        }
         
     print(f"Corrected SQL: {sql_query}")
     return {"sql_query": sql_query, "revision_count": state['revision_count'] + 1, "latency_ms": int((time.time() - start_time) * 1000)}
@@ -124,37 +148,16 @@ def responder_node(state: AgentState):
     if state.get('intent') == 'chat':
         return {"latency_ms": int((time.time() - start_time) * 1000)}
 
+    # If we reached here with an error after all retries
     if state.get('error'):
-         print(f"Final response state contains an error: {state['error']}")
-         latency = state.get("latency_ms", 0) + int((time.time() - start_time) * 1000)
-         
-         # Use the ORIGINAL error and query for better diagnostics
-         orig_error = state.get("first_error", state['error'])
-         orig_query = state.get("first_failing_query", state.get("sql_query"))
-
-         error_content = (
-             f"**Database Error**: {orig_error}\n\n"
-             f"**Original Failing Query**: `{orig_query}`\n\n"
-             "I tried to fix it but couldn't. Please try rephrasing your question."
-         )
-         
-         error_msg = AIMessage(content=error_content)
+         error_content = f"I'm sorry, I encountered an issue accessing the inventory data: {state['error']}"
          return {
-             "messages": [error_msg],
-             "latency_ms": latency
+             "messages": [AIMessage(content=error_content)],
+             "latency_ms": int((time.time() - start_time) * 1000)
          }
 
-    # Format the result for the LLM
     data = state.get('sql_result', [])
-    if isinstance(data, list):
-        if len(data) > 20:
-            formatted_data = str(data[:20]) + "\n... (truncated for brevity)"
-        else:
-            formatted_data = str(data)
-    else:
-        formatted_data = str(data)
-
-    print(f"Formatting natural language answer for {len(data)} results...")
+    formatted_data = str(data) if data else "No records found."
 
     prompt = RESPONSE_PROMPT.format(
         question=state['question'],
@@ -162,15 +165,39 @@ def responder_node(state: AgentState):
         sql_result=formatted_data
     )
     
-    messages = [
-        SystemMessage(content=prompt)
-    ]
+    # Use HumanMessage for better adherence to the reporting template
+    response = llm.invoke([HumanMessage(content=prompt)])
+    content = response.content.strip()
+
+    # Robust marker stripping using regex (case-insensitive)
+    content = re.sub(r'\[\s*REPORT\s+START\s*\]', '', content, flags=re.IGNORECASE)
+    content = re.sub(r'\[\s*REPORT\s+END\s*\]', '', content, flags=re.IGNORECASE)
+    content = re.sub(r'#+\s*REPORT\s+(START|END)\s*#*', '', content, flags=re.IGNORECASE)
+    content = content.strip()
+
+    # --- HALLUCINATION FALLBACK ---
+    if is_hallucination(content):
+        print("!!! RESPONDER HALLUCINATION DETECTED. Using fallback summary !!!")
+        if not data or data == "No records found.":
+            content = "No relevant records were found in the database."
+        else:
+            # Generate a professional, deterministic summary of the data lists
+            summary_parts = []
+            if isinstance(data, list) and len(data) > 0:
+                summary_parts.append(f"Found {len(data)} results:")
+                # List the first 5 items to keep it concise
+                for item in data[:5]:
+                    summary_parts.append(f"- {str(item)}")
+                if len(data) > 5:
+                    summary_parts.append(f"... and {len(data)-5} more.")
+            else:
+                summary_parts.append(f"Result: {str(data)}")
+            content = "\n".join(summary_parts)
     
-    response = llm.invoke(messages)
-    print(f"Final Answer Generated.")
-    
-    latency = state.get("latency_ms", 0) + int((time.time() - start_time) * 1000)
+    # Always create a new AIMessage with the cleaned content
+    response = AIMessage(content=content)
+
     return {
         "messages": [response],
-        "latency_ms": latency
+        "latency_ms": state.get("latency_ms", 0) + int((time.time() - start_time) * 1000)
     }
