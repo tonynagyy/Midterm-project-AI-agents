@@ -1,85 +1,55 @@
-# Inventory Chatbot
+# Inventory Chatbot (SQL)
 
-A minimal AI chat service designed to answer inventory and business questions from a database. It generates SQL queries locally using LangGraph and Mistral (via Ollama) or OpenAI models.
+A professional AI conversational agent that translates natural language into structured SQL queries to manage and query an enterprise relational database.
 
 ## 🏗️ System Architecture
 
-### 1. Overall Application Flow
+### 1. Terminal Interaction Flow
 
-```mermaid
-sequenceDiagram
-    participant User
-    participant Streamlit (UI)
-    participant FastAPI (API)
-    participant LangGraph (Agent)
-    participant LLM (Ollama/OpenAI)
-    participant SQLite (DB)
-
-    User->>Streamlit (UI): Asks question
-    Streamlit (UI)->>FastAPI (API): POST /api/chat
-    FastAPI (API)->>LangGraph (Agent): Invoke Agent
-    LangGraph (Agent)->>LLM (Ollama/OpenAI): Generate/Fix SQL
-    LLM (Ollama/OpenAI)-->>LangGraph (Agent): SQL Query
-    LangGraph (Agent)->>SQLite (DB): Execute Query
-    SQLite (DB)-->>LangGraph (Agent): Data Results
-    LangGraph (Agent)->>LLM (Ollama/OpenAI): Format Answer
-    LLM (Ollama/OpenAI)-->>LangGraph (Agent): Natural Language Answer
-    LangGraph (Agent)-->>FastAPI (API): Final State
-    FastAPI (API)-->>Streamlit (UI): JSON Response
-    Streamlit (UI)-->>User: Answers + SQL + Metrics
-```
-
-### 2. LangGraph Workflow
+The chatbot operates as a state-machine based conversational agent. It receives natural language input, parses intent, generates SQL, executes it, and converts results back into human-readable reports.
 
 ```mermaid
 graph TD
-    Start((Start)) --> Router{Router Node}
-    Router -->|chat| Chat[Chat Node]
-    Router -->|sql| SQLGen[SQL Generator]
-
-    SQLGen --> SQLExec[SQL Executor]
-    SQLExec --> Check{Error?}
-
-    Check -->|Yes| SQLCorr[SQL Corrector]
-    SQLCorr --> SQLExec
-
-    Check -->|No| Resp[Responder Node]
-    Chat --> Resp
-    Resp --> End((End))
-
-    subgraph "Self-Correction Loop"
-    SQLExec
-    Check
-    SQLCorr
-    end
+    A[User Input] --> B[Router Node]
+    B -- "Intent: Chat" --> C[Chat Node]
+    B -- "Intent: SQL" --> D[SQL Generator Node]
+    C --> E[Final Response]
+    D --> F[SQL Executor Node]
+    F -- "Success" --> G[Responder Node]
+    F -- "Error" --> H[SQL Corrector Node]
+    H --> F
+    G --> E
 ```
+
+### 2. Core Features
+
+- **Intent Recognition**: Distinguishes between database queries and general chitchat.
+- **Self-Correction**: Automatically detects and fixes SQL syntax errors or execution failures before responding.
+- **Business Logic**: Automatically filters for **Active** records and excludes **Disposed/Retired** assets by default.
+- **SQLite Engine**: Optimized for SQLite3 with specialized date and filtering rules.
 
 ## 🚀 Setup & Installation
 
 ### 1. Prerequisites
 
 - Python 3.10+
-- **Ollama** (if using local Mistral)
-- **OpenAI API Key** (if using OpenAI)
+- **Ollama** (for local Mistral) or **OpenAI API Key**.
 
 ### 2. Environment Setup
 
-Create a virtual environment outside the folder:
-
-```powershell
-python -m venv ../venv
-../venv/Scripts/Activate.ps1
-```
-
-Install dependencies:
-
-```powershell
-pip install -r requirements.txt
-```
+1. Create and activate a virtual environment:
+   ```powershell
+   python -m venv venv
+   .\venv\Scripts\Activate.ps1
+   ```
+2. Install dependencies:
+   ```powershell
+   pip install -r requirements.txt
+   ```
 
 ### 3. Database Initialization
 
-Ensure the local SQLite database is created and seeded:
+Initialize and seed the local SQLite database from the provided schema and sample data:
 
 ```powershell
 python setup_database.py
@@ -87,41 +57,26 @@ python setup_database.py
 
 ### 4. Configuration (.env)
 
-Create a `.env` file in the `inventory-chatbot` folder:
+Create a `.env` file in the root directory:
 
 ```env
-# PROVIDER options: 'ollama' or 'openai'
+# PROVIDER: 'ollama' or 'openai'
 PROVIDER=ollama
 MODEL_NAME=mistral
-
-# If using OpenAI:
-# PROVIDER=openai
-# MODEL_NAME=gpt-4o
-# OPENAI_API_KEY=your_key_here
 ```
 
-## 🏃 Running the Project
+## 🏃 Running the Application (CLI)
 
-1. **Start the API Server**:
-
-```powershell
-python api.py
-```
-
-2. **Start the UI (Streamlit)**:
+To launch the interactive terminal chatbot:
 
 ```powershell
-python -m streamlit run app.py
+python main.py
 ```
 
 ## 🛠️ Project Structure
 
-- `api.py`: FastAPI server handling the chat endpoint.
-- `app.py`: Streamlit UI for interaction and debugging.
-- `agent/`:
-  - `graph.py`: LangGraph workflow definition.
-  - `nodes.py`: Logic for each agent node.
-  - `prompts.py`: System prompts and schema handling.
-  - `state.py`: Definition of the agent's state.
-- `schema.sql`: Database DDL (Source of truth).
+- `main.py`: **Primary Entry Point** for terminal-based interaction.
+- `agent/`: Core logic (Graph, Nodes, Prompts, State).
+- `architecture.md`: Visual architecture diagrams (Mermaid).
 - `inventory_chatbot.db`: Local SQLite database.
+- `setup_database.py`: Database initialization script.
