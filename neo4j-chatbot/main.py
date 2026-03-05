@@ -4,16 +4,16 @@ logging.getLogger("openai").setLevel(logging.WARNING)
 logging.getLogger("neo4j").setLevel(logging.WARNING)
 
 import sys
-from classifier import IntentClassifier
-from cypher_generator import CypherGenerator
-from executor import Neo4jExecutor
-from response_engine import ResponseEngine
+from agent.classifier import IntentClassifier
+from agent.cypher_generator import CypherGenerator
+from agent.executor import Neo4jExecutor
+from agent.response_engine import ResponseEngine
 
 logging.getLogger("config").setLevel(logging.WARNING)
-logging.getLogger("executor").setLevel(logging.WARNING)
-logging.getLogger("classifier").setLevel(logging.WARNING)
-logging.getLogger("cypher_generator").setLevel(logging.WARNING)
-logging.getLogger("response_engine").setLevel(logging.WARNING)
+logging.getLogger("agent.executor").setLevel(logging.WARNING)
+logging.getLogger("agent.classifier").setLevel(logging.WARNING)
+logging.getLogger("agent.cypher_generator").setLevel(logging.WARNING)
+logging.getLogger("agent.response_engine").setLevel(logging.WARNING)
 
 # Map intents to human-readable action labels for the response engine
 INTENT_ACTION_MAP = {

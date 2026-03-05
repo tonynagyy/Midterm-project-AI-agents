@@ -4,9 +4,9 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("openai").setLevel(logging.WARNING)
 logging.getLogger("neo4j").setLevel(logging.WARNING)
 
-from classifier import IntentClassifier
-from cypher_generator import CypherGenerator
-from executor import Neo4jExecutor
+#from agent.classifier import IntentClassifier
+from agent.cypher_generator import CypherGenerator
+from agent.executor import Neo4jExecutor
 
 
 def load_seed_data(file_path: str = "seed_data.txt"):
