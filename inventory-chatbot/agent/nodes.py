@@ -5,6 +5,7 @@ import time
 from dotenv import load_dotenv
 from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
+from langchain_groq import ChatGroq
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from .state import AgentState
 from .prompts import ROUTER_PROMPT, SYSTEM_PROMPT, CHAT_PROMPT, RESPONSE_PROMPT, REPLAN_PROMPT, get_schema_string
@@ -34,6 +35,8 @@ DB_PATH = 'inventory_chatbot.db'
 
 if PROVIDER == "openai":
     llm = ChatOpenAI(model=MODEL_NAME, temperature=0)
+elif PROVIDER == "groq":
+    llm = ChatGroq(model=MODEL_NAME, temperature=0)
 else:
     llm = ChatOllama(model=MODEL_NAME, temperature=0)
 

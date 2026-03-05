@@ -13,7 +13,7 @@ The chatbot operates as a state-machine based conversational agent using **LangG
 ### 1. Prerequisites
 
 - Python 3.10+
-- **Ollama** (for local Mistral) or **OpenAI API Key**.
+- **Ollama** (for local Mistral), **Groq**, or **OpenAI API Key**.
 
 ### 2. Environment Setup
 
@@ -40,9 +40,13 @@ python setup_database.py
 Create a `.env` file in the root directory:
 
 ```env
-# PROVIDER: 'ollama' or 'openai'
+# PROVIDER: 'ollama', 'groq', or 'openai'
 PROVIDER=ollama
 MODEL_NAME=mistral
+
+# If using Groq or OpenAI
+# GROQ_API_KEY=your_key
+# OPENAI_API_KEY=your_key
 ```
 
 ## 🏃 Running the Application (CLI)
