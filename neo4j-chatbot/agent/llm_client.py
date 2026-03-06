@@ -4,9 +4,6 @@ from config import LLM_PROVIDER, OLLAMA_URL, LLM_MODEL, LLM_TEMPERATURE, OPENAI_
 
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Lazy-initialize provider clients at module load
-# ---------------------------------------------------------------------------
 openai_client = None
 groq_client = None
 
@@ -20,7 +17,7 @@ if LLM_PROVIDER.lower() == "openai":
 
 elif LLM_PROVIDER.lower() == "groq":
     try:
-        from openai import OpenAI  # Groq uses the OpenAI-compatible SDK
+        from openai import OpenAI 
         groq_client = OpenAI(
             api_key=GROQ_API_KEY,
             base_url="https://api.groq.com/openai/v1"
@@ -30,9 +27,6 @@ elif LLM_PROVIDER.lower() == "groq":
         logger.error("OpenAI package (required for Groq) not installed. Run: pip install openai")
 
 
-# ---------------------------------------------------------------------------
-# Unified LLM Client
-# ---------------------------------------------------------------------------
 class LLMClient:
     def __init__(self):
         self.provider = LLM_PROVIDER.lower()
