@@ -10,6 +10,11 @@ from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from .state import AgentState
 from .prompts import ROUTER_PROMPT, SYSTEM_PROMPT, CHAT_PROMPT, RESPONSE_PROMPT, REPLAN_PROMPT, get_schema_string
 
+def get_recent_messages(messages, k=5):
+    """Return up to the last K messages, ignoring system messages."""
+    return messages[-k:] if len(messages) > k else messages
+
+
 def is_hallucination(text: str) -> bool:
     """Detects common math-problem hallucination patterns."""
     patterns = [
@@ -70,7 +75,8 @@ def router_node(state: AgentState):
     """Classifies user intent as 'sql' or 'chat'."""
     print("\n--- [NODE: ROUTER] ---")
     start_time = time.time()
-    messages = [SystemMessage(content=ROUTER_PROMPT), HumanMessage(content=state['question'])]
+    recent_history = get_recent_messages(state['messages'], k=5)
+    messages = [SystemMessage(content=ROUTER_PROMPT)] + recent_history
     response = llm.invoke(messages)
     content = response.content.strip().lower()
     intent = 'sql' if 'sql' in content else 'chat'
@@ -84,7 +90,8 @@ def chat_node(state: AgentState):
     """Handles general conversation/greetings."""
     print("--- [NODE: CHAT] ---")
     start_time = time.time()
-    messages = [SystemMessage(content=CHAT_PROMPT), HumanMessage(content=state['question'])]
+    recent_history = get_recent_messages(state['messages'], k=5)
+    messages = [SystemMessage(content=CHAT_PROMPT)] + recent_history
     response = llm.invoke(messages)
     return {"messages": [response], "latency_ms": int((time.time() - start_time) * 1000)}
 
@@ -93,7 +100,8 @@ def sql_generator_node(state: AgentState):
     print("--- [NODE: SQL GENERATOR] ---")
     start_time = time.time()
     schema = get_schema_string(DB_PATH)
-    messages = [SystemMessage(content=SYSTEM_PROMPT.format(schema=schema)), HumanMessage(content=state['question'])]
+    recent_history = get_recent_messages(state['messages'], k=5)
+    messages = [SystemMessage(content=SYSTEM_PROMPT.format(schema=schema))] + recent_history
     response = llm.invoke(messages)
     sql_query = extract_sql(response.content)
     print(f"Generated SQL: {sql_query}")
@@ -163,7 +171,6 @@ def responder_node(state: AgentState):
     formatted_data = str(data) if data else "No records found."
 
     prompt = RESPONSE_PROMPT.format(
-        question=state['question'],
         sql_query=state['sql_query'],
         sql_result=formatted_data
     )

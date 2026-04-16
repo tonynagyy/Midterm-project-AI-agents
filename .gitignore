@@ -79,3 +79,5 @@ temp/
 .eslintcache
 .stylelintcache
 ```
+
+long_term_memory.db-*

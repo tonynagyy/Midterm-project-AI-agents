@@ -37,7 +37,23 @@ with st.sidebar:
     if st.button("Clear Chat"):
         st.session_state.messages = []
         st.session_state.session_id = str(uuid.uuid4())
-        st.rerun()
+    st.markdown("---")
+    st.subheader("Resume Session")
+    old_session_id = st.text_input("Enter past Session ID", help="Paste an old UUID to restore conversation")
+    if st.button("Resume Chat"):
+        if old_session_id:
+            st.session_state.session_id = old_session_id.strip()
+            try:
+                base_url = API_URL.replace("/api/chat", "")
+                hx_url = f"{base_url}/api/history/{st.session_state.session_id}"
+                resp = requests.get(hx_url)
+                if resp.status_code == 200:
+                    st.session_state.messages = resp.json().get("messages", [])
+                else:
+                    st.session_state.messages = []
+            except Exception as e:
+                st.session_state.messages = []
+            st.rerun()
 
     st.markdown("---")
     st.markdown("### Follow-up Scenarios")
@@ -54,10 +70,6 @@ with st.sidebar:
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
-        if message.get("sql"):
-            with st.expander("Generated SQL Query"):
-                st.code(message["sql"], language="sql")
-        
         # Display debug info if available
         if debug_mode and message.get("debug"):
             with st.expander("Raw Debug Data"):
@@ -85,38 +97,17 @@ if prompt := st.chat_input("Ask a question about your inventory..."):
                 if response.status_code == 200:
                     data = response.json()
                     
-                    answer = data.get("natural_language_answer")
-                    sql_query = data.get("sql_query")
-                    latency = data.get("latency_ms", 0)
-                    tokens = data.get("token_usage", {})
-                    status = data.get("status")
-
-                    if status == "error":
+                    answer = data.get("response", "No response found")
+                    
+                    if "An error occurred" in answer:
                         st.error(answer)
                     else:
                         st.markdown(answer)
-                    
-                    if sql_query:
-                        with st.expander("🛠️ Generated SQL Query"):
-                            st.code(sql_query, language="sql")
-                    
-                    # Show metrics
-                    cols = st.columns(3)
-                    cols[0].metric("Latency", f"{latency}ms")
-                    cols[1].metric("Tokens", tokens.get("total_tokens", 0))
-                    cols[2].metric("Status", status.upper())
-
-                    # Debug data
-                    debug_info = data if debug_mode else None
 
                     # Add assistant message to history
                     st.session_state.messages.append({
                         "role": "assistant", 
-                        "content": answer,
-                        "sql": sql_query,
-                        "latency": latency,
-                        "tokens": tokens,
-                        "debug": debug_info
+                        "content": answer
                     })
                 else:
                     st.error(f"API Error (Status {response.status_code}): {response.text}")

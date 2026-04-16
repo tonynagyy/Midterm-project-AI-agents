@@ -1,5 +1,6 @@
 from langgraph.graph import StateGraph, END
-from langgraph.checkpoint.memory import MemorySaver
+import sqlite3
+from langgraph.checkpoint.sqlite import SqliteSaver
 from .state import AgentState
 from .nodes import (
     router_node, 
@@ -55,5 +56,7 @@ workflow.add_conditional_edges(
 workflow.add_edge('corrector', 'executor')
 workflow.add_edge('responder', END)
 
-memory = MemorySaver()
+conn = sqlite3.connect("long_term_memory.db", check_same_thread=False)
+memory = SqliteSaver(conn)
+memory.setup()
 app = workflow.compile(checkpointer=memory)
