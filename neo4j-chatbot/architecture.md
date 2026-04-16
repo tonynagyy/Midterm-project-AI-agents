@@ -1,26 +1,37 @@
-# Neo4j AI Chatbot Flow
+# Neo4j AI Chatbot Flow (LangGraph)
 
-This document details the straightforward interaction flow of the Champions League Football Knowledge Graph Chatbot.
+This document describes the current LangGraph-based interaction flow for the Champions League Football Knowledge Graph Chatbot.
 
 ## Application Flow
 
-When a user interacts with the chatbot, their request is processed sequentially through 5 simple steps:
+Each user turn is processed as a state graph with routing, checkpointed short-term memory, and persistent long-term memory:
 
 ```mermaid
 graph TD
-    A([User Input]) --> B[Classify Intent]
-    B --> C[Generate Query]
-    C --> D[(Execute in Neo4j)]
-    D --> E[Formulate Response]
-    E --> F([Output to User])
+    A([User Input]) --> B[Bootstrap Turn]
+    B --> C[Prepare Short + Long Memory Context]
+    C --> D[Classify Intent]
+    D -->|chitchat| E[Generate Chitchat Response]
+    D -->|add/inquire/update/delete| F[Generate Cypher]
+    F --> G[(Execute in Neo4j)]
+    G --> H[Generate Final Response]
+    E --> I[Finalize + Metrics + Memory Update]
+    H --> I
+    I --> J([Output to User])
 ```
 
-### Flow Breakdown
+## Flow Breakdown
 
-1. **User Input** (`main.py`): The user types a message or question in the terminal.
-2. **Classify Intent** (`classifier.py`): The AI categorizes the message into one of five actions: Add, Inquire, Update, Delete, or Chitchat.
-3. **Generate Query** (`cypher_generator.py`): The AI translates the user's intent and request into a safe Cypher connection query.
-4. **Execute Query** (`executor.py`): The application connects to the Neo4j database, executes the generated query, and returns the raw graph results.
-5. **Formulate Response** (`response_engine.py`): The AI takes the raw database results and transforms them into a friendly, human-readable sentence.
+1. User input is accepted from CLI or Streamlit and sent to the LangGraph orchestrator.
+2. A rolling short-memory window is loaded from checkpoint state for the current thread.
+3. Relevant long-memory entries are retrieved from persistent SQLite storage.
+4. Short and long memory are merged into the prompt context.
+5. Intent is classified into add/inquire/update/delete/chitchat.
+6. Chitchat requests are answered directly by the response engine.
+7. Data requests generate safe Cypher, execute against Neo4j, and produce a natural-language reply.
+8. Finalization records latency and turn metrics, then writes the latest turn to both short and long memory.
 
-This linear sequence ensures predictability and speed.
+## Observability
+
+- Logging is centralized and written to console + rotating log file.
+- Optional LangSmith tracing captures graph and tool execution when enabled via `.env`.

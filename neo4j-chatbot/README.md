@@ -1,6 +1,14 @@
 # Neo4j AI Chatbot (Champions League Football)
 
-A terminal-based AI chatbot that uses the Ollama "mistral" model to answer questions and interact with a Champions League Football Knowledge Graph stored in Neo4j. The architecture follows strict clean architecture and separation of concerns.
+An AI chatbot that uses a LangGraph workflow to answer questions and interact with a Champions League Football Knowledge Graph stored in Neo4j.
+
+The runtime now includes:
+
+- LangGraph state-machine orchestration
+- Optional LangSmith tracing/metrics
+- Centralized logging to console and file
+- Short-term conversation memory (rolling window)
+- Long-term persistent memory (SQLite-backed)
 
 ## Prerequisites & Setup
 
@@ -44,11 +52,34 @@ cp .env.example .env
 
 Open `.env` and configure the variables based on your preferred LLM provider:
 
-| Provider   | `LLM_PROVIDER` | Extra Variable(s) | Notes                     |
-| :--------- | :------------- | :---------------- | :------------------------ |
-| **Ollama** | `ollama`       | `OLLAMA_URL`      | Local, free, offline      |
-| **OpenAI** | `openai`       | `OPENAI_API_KEY`  | High quality, paid        |
-| **Groq**   | `groq`         | `GROQ_API_KEY`    | Extremely fast, free tier |
+| Provider      | `LLM_PROVIDER` | Extra Variable(s) | Notes                            |
+| :------------ | :------------- | :---------------- | :------------------------------- |
+| **Ollama**    | `ollama`       | `OLLAMA_URL`      | Local, free, offline             |
+| **OpenAI**    | `openai`       | `OPENAI_API_KEY`  | High quality, paid               |
+| **Groq**      | `groq`         | `GROQ_API_KEY`    | Extremely fast, free tier        |
+| **LM Studio** | `lmstudio`     | `LMSTUDIO_URL`    | Local OpenAI-compatible endpoint |
+
+LangGraph / Observability / Memory settings:
+
+- `SHORT_MEMORY_TURNS` (default `5`): Rolling number of user-assistant turns kept per session.
+- `LONG_MEMORY_ENABLED` (default `true`): Enables persistent long memory.
+- `LONG_MEMORY_DB_PATH` (default `data/long_memory.sqlite`): SQLite path for long-memory storage.
+- `LONG_MEMORY_RETRIEVE_ITEMS` (default `4`): Number of long-memory entries to retrieve for context.
+- `LONG_MEMORY_MAX_CONTEXT_CHARS` (default `1200`): Max characters injected from long memory into prompt context.
+- `LOG_LEVEL` (default `INFO`): Logger level.
+- `LOG_FILE` (default `logs/chatbot.log`): File path for rotating logs.
+- `LANGSMITH_TRACING` (`true`/`false`): Enables LangSmith tracing.
+- `LANGSMITH_API_KEY`: Required when tracing is enabled.
+- `LANGSMITH_PROJECT`: LangSmith project name.
+- `LANGSMITH_ENDPOINT`: LangSmith API endpoint.
+
+LLM output budget settings:
+
+- `LLM_MAX_TOKENS_DEFAULT` (default `120`): Fallback max output tokens for uncategorized LLM calls.
+- `LLM_MAX_TOKENS_CLASSIFIER` (default `8`): Token cap for intent classification.
+- `LLM_MAX_TOKENS_CYPHER` (default `220`): Token cap for Cypher generation.
+- `LLM_MAX_TOKENS_RESPONSE` (default `80`): Token cap for response wording.
+- `LLM_MAX_TOKENS_CHITCHAT` (default `60`): Token cap for casual conversation replies.
 
 ---
 
@@ -123,6 +154,28 @@ Start the interactive terminal application:
 ```bash
 python main.py
 ```
+
+Start the Streamlit web app:
+
+```bash
+streamlit run app.py
+```
+
+## Runtime Behavior
+
+- Every user turn runs through a LangGraph pipeline.
+- A per-session thread ID is used to maintain short-term and long-term memory.
+  - CLI uses `terminal-session`.
+  - Streamlit uses a generated session UUID.
+- Short memory is a rolling window limited by `SHORT_MEMORY_TURNS`.
+- Long memory is persisted to SQLite and survives restarts when `LONG_MEMORY_ENABLED=true`.
+- Logs are written to both console and `LOG_FILE`.
+- When `LANGSMITH_TRACING=true`, runs and node-level execution traces are sent to LangSmith.
+
+### Viewing Memory
+
+- CLI: type `/memory` to print the latest long-memory entries for `terminal-session`.
+- Streamlit: enable Debug Mode and click `Show Long Memory Snapshot` in the sidebar.
 
 ## Example Interactions
 

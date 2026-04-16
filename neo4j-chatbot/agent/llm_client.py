@@ -1,6 +1,24 @@
 import requests
 import logging
-from config import LLM_PROVIDER, OLLAMA_URL, LLM_MODEL, LLM_TEMPERATURE, OPENAI_API_KEY, GROQ_API_KEY
+from config import (
+    LLM_PROVIDER,
+    OLLAMA_URL,
+    LLM_MODEL,
+    LLM_TEMPERATURE,
+    LLM_MAX_TOKENS_DEFAULT,
+    OPENAI_API_KEY,
+    GROQ_API_KEY,
+    LMSTUDIO_URL
+)
+
+try:
+    from langsmith import traceable
+except Exception:  # pragma: no cover
+    def traceable(*_args, **_kwargs):
+        def _decorator(func):
+            return func
+
+        return _decorator
 
 logger = logging.getLogger(__name__)
 
@@ -32,10 +50,20 @@ class LLMClient:
         self.provider = LLM_PROVIDER.lower()
         self.model = LLM_MODEL
         self.temperature = LLM_TEMPERATURE
+        self.default_max_tokens = max(1, LLM_MAX_TOKENS_DEFAULT)
         self.ollama_url = OLLAMA_URL
+        self.lmstudio_url = globals().get("LMSTUDIO_URL", "http://localhost:1234/v1/chat/completions")
 
-    def generate(self, prompt: str) -> str:
+    @traceable(name="llm_generate", run_type="llm")
+    def generate(self, prompt: str, max_tokens: int | None = None) -> str:
         """Generates a text response from the configured LLM provider."""
+        token_cap = max(1, int(max_tokens or self.default_max_tokens))
+        logger.debug(
+            "Calling LLM provider=%s model=%s max_tokens=%s",
+            self.provider,
+            self.model,
+            token_cap,
+        )
 
         if self.provider == "openai":
             if not openai_client:
@@ -46,6 +74,7 @@ class LLMClient:
                 model=self.model,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=self.temperature,
+                max_tokens=token_cap,
             )
             return response.choices[0].message.content.strip()
 
@@ -58,6 +87,7 @@ class LLMClient:
                 model=self.model,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=self.temperature,
+                max_tokens=token_cap,
             )
             return response.choices[0].message.content.strip()
 
@@ -66,7 +96,10 @@ class LLMClient:
                 "model": self.model,
                 "prompt": prompt,
                 "stream": False,
-                "options": {"temperature": self.temperature},
+                "options": {
+                    "temperature": self.temperature,
+                    "num_predict": token_cap,
+                },
             }
             try:
                 response = requests.post(self.ollama_url, json=payload, timeout=120)
@@ -79,8 +112,28 @@ class LLMClient:
             except requests.exceptions.Timeout:
                 raise TimeoutError("Ollama request timed out after 120 seconds.")
 
+        elif self.provider == "lmstudio":
+            payload = {
+                "model": self.model,
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": self.temperature,
+                "max_tokens": token_cap,
+                "stream": False,
+            }
+            try:
+                response = requests.post(self.lmstudio_url, json=payload, timeout=120)
+                response.raise_for_status()
+                # LM Studio returns OpenAI-compatible response
+                return response.json()["choices"][0]["message"]["content"].strip()
+            except requests.exceptions.ConnectionError:
+                raise ConnectionError(
+                    f"Could not connect to LM Studio at {self.lmstudio_url}. Is LM Studio running?"
+                )
+            except requests.exceptions.Timeout:
+                raise TimeoutError("LM Studio request timed out after 120 seconds.")
+
         else:
             raise ValueError(
                 f"Unsupported LLM_PROVIDER: '{self.provider}'. "
-                "Valid options are: 'openai', 'groq', 'ollama'"
+                "Valid options are: 'openai', 'groq', 'ollama', 'lmstudio'"
             )

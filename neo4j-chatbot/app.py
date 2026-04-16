@@ -1,4 +1,3 @@
-import time
 import uuid
 import streamlit as st
 
@@ -6,49 +5,29 @@ import streamlit as st
 st.set_page_config(page_title="Football Knowledge Graph", page_icon="⚽", layout="wide")
 
 import logging
-logging.getLogger("httpx").setLevel(logging.WARNING)
-logging.getLogger("openai").setLevel(logging.WARNING)
-logging.getLogger("neo4j").setLevel(logging.WARNING)
-logging.getLogger("config").setLevel(logging.WARNING)
-logging.getLogger("agent.executor").setLevel(logging.WARNING)
-logging.getLogger("agent.classifier").setLevel(logging.WARNING)
-logging.getLogger("agent.cypher_generator").setLevel(logging.WARNING)
-logging.getLogger("agent.response_engine").setLevel(logging.WARNING)
+from agent.langgraph_orchestrator import LangGraphOrchestrator
+from agent.logging_setup import setup_logging
+from config import LLM_MODEL, LLM_PROVIDER, LONG_MEMORY_ENABLED, SHORT_MEMORY_TURNS
 
-from agent.classifier import IntentClassifier
-from agent.cypher_generator import CypherGenerator
-from agent.executor import Neo4jExecutor
-from agent.response_engine import ResponseEngine
-from config import LLM_PROVIDER, LLM_MODEL
-
-# Map intents to human-readable action labels
-INTENT_ACTION_MAP = {
-    "add": "Added",
-    "update": "Updated",
-    "delete": "Deleted",
-    "inquire": "Queried",
-}
+setup_logging()
+logger = logging.getLogger(__name__)
 
 # -------------------------------------------------------------------
 # Initialization
 # -------------------------------------------------------------------
 
 @st.cache_resource
-def get_chatbot_components():
+def get_chatbot_orchestrator():
     """
-    Initialize and cache the model wrappers and Neo4j connection 
-    so they aren't re-created on every Streamlit re-run.
+    Initialize and cache the LangGraph orchestrator so it persists across reruns.
     """
-    classifier = IntentClassifier()
-    generator = CypherGenerator()
-    executor = Neo4jExecutor()
-    responder = ResponseEngine()
-    return classifier, generator, executor, responder
+    return LangGraphOrchestrator()
 
 try:
-    classifier, generator, executor, responder = get_chatbot_components()
-except Exception as e:
-    st.error(f"Failed to initialize chatbot components. Error: {e}")
+    orchestrator = get_chatbot_orchestrator()
+except Exception as exc:
+    logger.exception("Failed to initialize LangGraph orchestrator in Streamlit.")
+    st.error(f"Failed to initialize chatbot components. Error: {exc}")
     st.stop()
 
 # Initialize session state
@@ -64,6 +43,7 @@ if "session_id" not in st.session_state:
 
 st.title("⚽ Champions League Graph Bot")
 st.markdown(f"Interact with the football knowledge graph using {LLM_MODEL.upper()} ({LLM_PROVIDER.upper()}).")
+st.caption("Supported LLM providers: ollama, openai, groq, lmstudio")
 
 # Sidebar
 with st.sidebar:
@@ -73,6 +53,15 @@ with st.sidebar:
     st.info(f"**Session ID:** `{st.session_state.session_id}`")
     st.info(f"**Provider:** {LLM_PROVIDER.upper()}")
     st.info(f"**Model:** {LLM_MODEL}")
+    st.info(f"**Short Memory Turns:** {SHORT_MEMORY_TURNS}")
+    st.info(f"**Long Memory:** {'Enabled' if LONG_MEMORY_ENABLED else 'Disabled'}")
+
+    if debug_mode and LONG_MEMORY_ENABLED and st.button("Show Long Memory Snapshot"):
+        snapshot = orchestrator.peek_long_memory(st.session_state.session_id, limit=8)
+        if snapshot:
+            st.json(snapshot)
+        else:
+            st.caption("No long-memory entries saved yet for this session.")
     
     if st.button("Clear Chat"):
         st.session_state.messages = []
@@ -126,40 +115,30 @@ if prompt := st.chat_input("Ask about Champions League football..."):
     # Process with the agent
     with st.chat_message("assistant"):
         with st.spinner("Processing..."):
-            start_time = time.time()
             debug_data = {}
             response_text = ""
             
             try:
-                # 1. Classify Intent
-                intent = classifier.classify(prompt)
-                debug_data["intent"] = intent
-                
-                if intent == "chitchat":
-                    # 2. Handle Chitchat without DB
-                    response_text = responder.generate_chitchat(prompt)
-                else:
-                    # 3. Generate Cypher query
-                    cypher_query = generator.generate(prompt, intent)
-                    debug_data["cypher"] = cypher_query
-                    
-                    # 4. Execute against Neo4j
-                    raw_results = executor.execute_query(cypher_query)
-                    debug_data["raw_results"] = raw_results
-                    
-                    # 5. Convert to natural language
-                    action_msg = INTENT_ACTION_MAP.get(intent, "Processed")
-                    response_text = responder.generate_response(prompt, raw_results, action_msg, intent)
-                    
-            except ValueError as e:
-                response_text = f"I couldn't generate a valid query for that request. Please try rephrasing.\n\n*Detail: {e}*"
-                debug_data["error"] = str(e)
-            except Exception as e:
-                response_text = f"I'm sorry, I encountered an error: {e}"
-                debug_data["error"] = str(e)
+                result = orchestrator.run_turn(
+                    user_input=prompt,
+                    thread_id=st.session_state.session_id,
+                )
+                response_text = result.get("response", "")
 
-            latency = (time.time() - start_time) * 1000
-            debug_data["latency"] = latency
+                debug_data["intent"] = result.get("intent")
+                debug_data["cypher"] = result.get("cypher_query")
+                debug_data["raw_results"] = result.get("raw_results")
+                debug_data["latency"] = result.get("latency_ms", 0)
+                debug_data["metrics"] = result.get("metrics", {})
+                debug_data["memory_turns"] = result.get("memory_turns", 0)
+                debug_data["long_memory_hits"] = result.get("long_memory_hits", 0)
+
+                if result.get("error"):
+                    debug_data["error"] = result.get("error")
+            except Exception as exc:
+                logger.exception("Streamlit turn failed.")
+                response_text = f"I'm sorry, I encountered an error: {exc}"
+                debug_data["error"] = str(exc)
             
             # Display response
             st.markdown(response_text)
@@ -169,10 +148,14 @@ if prompt := st.chat_input("Ask about Champions League football..."):
                 with st.expander("🛠️ Raw Debug Data"):
                     st.write(f"**Intent:** {debug_data.get('intent')}")
                     st.write(f"**Latency:** {debug_data.get('latency', 0):.2f} ms")
+                    st.write(f"**Memory Turns:** {debug_data.get('memory_turns', 0)}")
+                    st.write(f"**Long Memory Hits:** {debug_data.get('long_memory_hits', 0)}")
                     if debug_data.get("cypher"):
                         st.code(debug_data["cypher"], language="cypher")
                     if debug_data.get("raw_results") is not None:
                         st.json(debug_data["raw_results"])
+                    if debug_data.get("metrics"):
+                        st.json(debug_data["metrics"])
 
             # Save the message and state
             st.session_state.messages.append({

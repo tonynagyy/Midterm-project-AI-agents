@@ -2,6 +2,15 @@ import logging
 from neo4j import GraphDatabase
 from config import NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD
 
+try:
+    from langsmith import traceable
+except Exception:  # pragma: no cover
+    def traceable(*_args, **_kwargs):
+        def _decorator(func):
+            return func
+
+        return _decorator
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -27,6 +36,7 @@ class Neo4jExecutor:
         except Exception:
             pass
 
+    @traceable(name="neo4j_execute_query", run_type="tool")
     def execute_query(self, query: str) -> list:
         """Executes a Cypher query and returns results as a list of dicts."""
         logger.debug(f"Executing Cypher:\n{query}")

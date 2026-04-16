@@ -48,3 +48,164 @@ Thibaut Courtois is from Belgium.
 Antoine Griezmann is from France.
 Bernardo Silva is from Portugal.
 Rodri is from Spain.
+Lamine Yamal plays for Barcelona.
+Raphinha plays for Barcelona.
+Frenkie de Jong plays for Barcelona.
+Federico Valverde plays for Real Madrid.
+Aurelien Tchouameni plays for Real Madrid.
+Eduardo Camavinga plays for Real Madrid.
+Antonio Rudiger plays for Real Madrid.
+Eder Militao plays for Real Madrid.
+Jack Grealish plays for Manchester City.
+John Stones plays for Manchester City.
+Manuel Akanji plays for Manchester City.
+Gabriel Jesus plays for Arsenal.
+William Saliba plays for Arsenal.
+Gabriel Martinelli plays for Arsenal.
+Kai Havertz plays for Arsenal.
+Darwin Nunez plays for Liverpool.
+Alexis Mac Allister plays for Liverpool.
+Dominik Szoboszlai plays for Liverpool.
+Luis Diaz plays for Liverpool.
+Diogo Jota plays for Liverpool.
+Marcus Rashford plays for Manchester United.
+Kobbie Mainoo plays for Manchester United.
+Alejandro Garnacho plays for Manchester United.
+Rasmus Hojlund plays for Manchester United.
+Cole Palmer plays for Chelsea.
+Enzo Fernandez plays for Chelsea.
+Reece James plays for Chelsea.
+Moises Caicedo plays for Chelsea.
+Heung-Min Son plays for Tottenham Hotspur.
+James Maddison plays for Tottenham Hotspur.
+Cristian Romero plays for Tottenham Hotspur.
+Dejan Kulusevski plays for Tottenham Hotspur.
+Leroy Sane plays for Bayern Munich.
+Manuel Neuer plays for Bayern Munich.
+Alphonso Davies plays for Bayern Munich.
+Dayot Upamecano plays for Bayern Munich.
+Serge Gnabry plays for Bayern Munich.
+Ousmane Dembele plays for Paris Saint-Germain.
+Gianluigi Donnarumma plays for Paris Saint-Germain.
+Marquinhos plays for Paris Saint-Germain.
+Warren Zaire-Emery plays for Paris Saint-Germain.
+Vitinha plays for Paris Saint-Germain.
+Nicolo Barella plays for Inter Milan.
+Hakan Calhanoglu plays for Inter Milan.
+Alessandro Bastoni plays for Inter Milan.
+Federico Dimarco plays for Inter Milan.
+Theo Hernandez plays for AC Milan.
+Mike Maignan plays for AC Milan.
+Christian Pulisic plays for AC Milan.
+Tijjani Reijnders plays for AC Milan.
+Granit Xhaka plays for Bayer Leverkusen.
+Jeremie Frimpong plays for Bayer Leverkusen.
+Alex Grimaldo plays for Bayer Leverkusen.
+Jonathan Tah plays for Bayer Leverkusen.
+Gregor Kobel plays for Borussia Dortmund.
+Julian Brandt plays for Borussia Dortmund.
+Donyell Malen plays for Borussia Dortmund.
+Niclas Fullkrug plays for Borussia Dortmund.
+Khvicha Kvaratskhelia plays for Napoli.
+Giovanni Di Lorenzo plays for Napoli.
+Stanislav Lobotka plays for Napoli.
+Piotr Zielinski plays for Napoli.
+Lois Openda plays for RB Leipzig.
+Benjamin Sesko plays for RB Leipzig.
+Xavi Simons plays for RB Leipzig.
+Nicolas Otamendi plays for Benfica.
+Angel Di Maria plays for Benfica.
+Jan Oblak plays for Atletico Madrid.
+Rodrigo De Paul plays for Atletico Madrid.
+Lamine Yamal is from Spain.
+Raphinha is from Brazil.
+Frenkie de Jong is from Netherlands.
+Federico Valverde is from Uruguay.
+Aurelien Tchouameni is from France.
+Eduardo Camavinga is from France.
+Antonio Rudiger is from Germany.
+Eder Militao is from Brazil.
+Jack Grealish is from England.
+John Stones is from England.
+Manuel Akanji is from Switzerland.
+William Saliba is from France.
+Gabriel Martinelli is from Brazil.
+Kai Havertz is from Germany.
+Darwin Nunez is from Uruguay.
+Alexis Mac Allister is from Argentina.
+Dominik Szoboszlai is from Hungary.
+Luis Diaz is from Colombia.
+Diogo Jota is from Portugal.
+Marcus Rashford is from England.
+Kobbie Mainoo is from England.
+Alejandro Garnacho is from Argentina.
+Rasmus Hojlund is from Denmark.
+Cole Palmer is from England.
+Enzo Fernandez is from Argentina.
+Reece James is from England.
+Moises Caicedo is from Ecuador.
+Heung-Min Son is from South Korea.
+James Maddison is from England.
+Cristian Romero is from Argentina.
+Dejan Kulusevski is from Sweden.
+Leroy Sane is from Germany.
+Manuel Neuer is from Germany.
+Alphonso Davies is from Canada.
+Dayot Upamecano is from France.
+Serge Gnabry is from Germany.
+Ousmane Dembele is from France.
+Gianluigi Donnarumma is from Italy.
+Marquinhos is from Brazil.
+Warren Zaire-Emery is from France.
+Vitinha is from Portugal.
+Nicolo Barella is from Italy.
+Hakan Calhanoglu is from Turkey.
+Alessandro Bastoni is from Italy.
+Federico Dimarco is from Italy.
+Theo Hernandez is from France.
+Mike Maignan is from France.
+Christian Pulisic is from United States.
+Tijjani Reijnders is from Netherlands.
+Granit Xhaka is from Switzerland.
+Jeremie Frimpong is from Netherlands.
+Alex Grimaldo is from Spain.
+Jonathan Tah is from Germany.
+Gregor Kobel is from Switzerland.
+Julian Brandt is from Germany.
+Donyell Malen is from Netherlands.
+Niclas Fullkrug is from Germany.
+Khvicha Kvaratskhelia is from Georgia.
+Giovanni Di Lorenzo is from Italy.
+Stanislav Lobotka is from Slovakia.
+Lois Openda is from Belgium.
+Benjamin Sesko is from Slovenia.
+Xavi Simons is from Netherlands.
+Nicolas Otamendi is from Argentina.
+Angel Di Maria is from Argentina.
+Jan Oblak is from Slovenia.
+Rodrigo De Paul is from Argentina.
+Sergio Ramos played in the Champions League.
+Andres Iniesta played in the Champions League.
+Xavi Hernandez played in the Champions League.
+Neymar Jr played in the Champions League.
+Zlatan Ibrahimovic played in the Champions League.
+Wayne Rooney played in the Champions League.
+Frank Lampard played in the Champions League.
+Steven Gerrard played in the Champions League.
+Ronaldinho played in the Champions League.
+Kaka played in the Champions League.
+Paolo Maldini played in the Champions League.
+Andrea Pirlo played in the Champions League.
+Arjen Robben played in the Champions League.
+Franck Ribery played in the Champions League.
+Didier Drogba played in the Champions League.
+Samuel Etoo played in the Champions League.
+Thierry Henry played in the Champions League.
+David Beckham played in the Champions League.
+Raul Gonzalez played in the Champions League.
+Iker Casillas played in the Champions League.
+Gianluigi Buffon played in the Champions League.
+Gerard Pique played in the Champions League.
+Carles Puyol played in the Champions League.
+Clarence Seedorf played in the Champions League.
+Pavel Nedved played in the Champions League.
