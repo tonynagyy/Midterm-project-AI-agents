@@ -161,6 +161,28 @@ Start the Streamlit web app:
 streamlit run app.py
 ```
 
+Run the HTTP API server:
+
+```bash
+uvicorn api:app --host 0.0.0.0 --port 8000
+```
+
+Example API calls:
+
+```bash
+curl -X POST "http://localhost:8000/agent/chat" \
+   -H "Content-Type: application/json" \
+   -d '{"message":"who plays for arsenal?","thread_id":"api-demo"}'
+
+curl "http://localhost:8000/agent/memory/api-demo?limit=5"
+```
+
+Run API tests:
+
+```bash
+python -m unittest discover -s tests -p "test_api.py"
+```
+
 ## Runtime Behavior
 
 - Every user turn runs through a LangGraph pipeline.
