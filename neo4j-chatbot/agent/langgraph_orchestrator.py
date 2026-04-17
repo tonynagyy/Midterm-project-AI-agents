@@ -394,4 +394,5 @@ class LangGraphOrchestrator:
 
     def close(self) -> None:
         self.long_memory.close()
+        self.generator.close()
         self.executor.close()

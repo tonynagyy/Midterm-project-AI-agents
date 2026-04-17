@@ -17,10 +17,11 @@ NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "password")
 # LLM Configuration
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "ollama")  # 'ollama', 'openai', 'groq', or 'lmstudio'
 LLM_MODEL = os.getenv("LLM_MODEL", "mistral")
+LLM_MODEL_CYPHER = os.getenv("LLM_MODEL_CYPHER", "").strip()
 LLM_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.0"))
 LLM_MAX_TOKENS_DEFAULT = int(os.getenv("LLM_MAX_TOKENS_DEFAULT", "120"))
 LLM_MAX_TOKENS_CLASSIFIER = int(os.getenv("LLM_MAX_TOKENS_CLASSIFIER", "8"))
-LLM_MAX_TOKENS_CYPHER = int(os.getenv("LLM_MAX_TOKENS_CYPHER", "220"))
+LLM_MAX_TOKENS_CYPHER = int(os.getenv("LLM_MAX_TOKENS_CYPHER", "80"))
 LLM_MAX_TOKENS_RESPONSE = int(os.getenv("LLM_MAX_TOKENS_RESPONSE", "80"))
 LLM_MAX_TOKENS_CHITCHAT = int(os.getenv("LLM_MAX_TOKENS_CHITCHAT", "60"))
 
@@ -68,56 +69,28 @@ Current User Input: {user_input}
 Intent:"""
 
 
-CYPHER_GENERATOR_PROMPT = """You are a Neo4j Cypher query generator for a Champions League football knowledge graph.
+CYPHER_GENERATOR_PROMPT = """You are a text2cypher model.
 
-DATABASE SCHEMA:
-- Every node has label "Node" and a single property: name (string)
-- All facts are stored as relationships between nodes
-- Pattern: (:Node {{name: 'EntityName'}})-[:RELATION_TYPE]->(:Node {{name: 'Value'}})
-- Relationship types use UPPER_SNAKE_CASE (e.g. PLAYS_FOR, IS_FROM, HAS_POSITION)
+Schema:
+- Nodes: (:Node {{name: string}})
+- Facts: (:Node)-[:RELATION_TYPE]->(:Node)
 
-INTENT: {intent}
-RECENT CONVERSATION (optional):
-{memory_context}
+Intent: {intent}
+Context: {memory_context}
+Input: {user_input}
 
-USER INPUT: {user_input}
+Rules:
+- Output exactly one Cypher statement only.
+- Use label Node and property name only.
+- [add] MERGE nodes and MERGE relation.
+- [inquire] MATCH and RETURN data only.
+- [update] MATCH old relation, DELETE it, then MERGE new relation.
+- [delete] MATCH and DELETE relation or DETACH DELETE one named node.
+- No markdown, no backticks, no explanation.
+- Never delete the full graph.
+- Never create/drop indexes or constraints.
 
-QUERY RULES BY INTENT:
-
-[add] Use MERGE for both nodes then MERGE the relationship. Never use CREATE.
-Example output:
-MERGE (a:Node {{name: 'Lionel Messi'}})
-MERGE (b:Node {{name: 'Inter Miami'}})
-MERGE (a)-[:PLAYS_FOR]->(b)
-
-[inquire] Use MATCH to find and RETURN the relevant data.
-Example output:
-MATCH (a:Node {{name: 'Lionel Messi'}})-[r]->(b:Node)
-RETURN type(r) AS relation, b.name AS value
-
-[update] MATCH and DELETE the old relationship, then MERGE the new one.
-Example output:
-MATCH (a:Node {{name: 'Lionel Messi'}})-[r:PLAYS_FOR]->(:Node)
-DELETE r
-WITH a
-MERGE (b:Node {{name: 'Barcelona'}})
-MERGE (a)-[:PLAYS_FOR]->(b)
-
-[delete] MATCH and DELETE the specific relationship or node. Use DETACH DELETE only for a specific named node.
-Example output:
-MATCH (a:Node {{name: 'Lionel Messi'}})-[r:PLAYS_FOR]->(b:Node {{name: 'Inter Miami'}})
-DELETE r
-
-ABSOLUTE RULES (violations will be rejected):
-1. Output ONLY the raw Cypher query — no markdown, no backticks, no code fences, no explanation, no comments.
-2. Do NOT wrap output in ```cypher``` or ``` blocks.
-3. Do NOT output multiple queries separated by semicolons.
-4. Do NOT generate MATCH (n) DETACH DELETE n or any full-graph deletion.
-5. Do NOT generate CREATE INDEX, DROP INDEX, CREATE CONSTRAINT, or DROP CONSTRAINT.
-6. Node names must preserve original casing and spelling exactly as given by the user.
-7. Keep the query minimal: include only required clauses and avoid unnecessary aliases or verbose patterns.
-
-Now generate the Cypher query:"""
+Cypher:"""
 
 
 RESPONSE_ENGINE_PROMPT = """You are a helpful football chatbot assistant. Translate the raw database results into a clear, concise, natural language response.

@@ -77,9 +77,15 @@ LLM output budget settings:
 
 - `LLM_MAX_TOKENS_DEFAULT` (default `120`): Fallback max output tokens for uncategorized LLM calls.
 - `LLM_MAX_TOKENS_CLASSIFIER` (default `8`): Token cap for intent classification.
-- `LLM_MAX_TOKENS_CYPHER` (default `220`): Token cap for Cypher generation.
+- `LLM_MAX_TOKENS_CYPHER` (default `80`): Token cap for Cypher generation.
 - `LLM_MAX_TOKENS_RESPONSE` (default `80`): Token cap for response wording.
 - `LLM_MAX_TOKENS_CHITCHAT` (default `60`): Token cap for casual conversation replies.
+
+Optional task-specific model override:
+
+- `LLM_MODEL_CYPHER` (default empty): If set, only Cypher generation uses this model while other tasks still use `LLM_MODEL`.
+- Example: `LLM_MODEL_CYPHER=qwen2-5-coder-0-5b-neo4j-text2cypher-2024v1`
+- Practical baseline for first-time use of `qwen2-5-coder-0-5b-neo4j-text2cypher-2024v1`: keep `LLM_MAX_TOKENS_CYPHER=80` and use the compact Cypher prompt in `config.py`.
 
 ---
 
@@ -191,6 +197,8 @@ python -m unittest discover -s tests -p "test_api.py"
   - Streamlit uses a generated session UUID.
 - Short memory is a rolling window limited by `SHORT_MEMORY_TURNS`.
 - Long memory is persisted to SQLite and survives restarts when `LONG_MEMORY_ENABLED=true`.
+- `add`, `update`, and `delete` intents use deterministic Cypher templates (no LLM fallback) for predictable write operations.
+- `inquire` intent uses the Cypher model with an automatic EXPLAIN-driven cleanup/repair pass; if retries still fail, a deterministic inquire fallback query is used.
 - Logs are written to both console and `LOG_FILE`.
 - When `LANGSMITH_TRACING=true`, runs and node-level execution traces are sent to LangSmith.
 

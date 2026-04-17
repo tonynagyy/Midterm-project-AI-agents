@@ -55,13 +55,19 @@ class LLMClient:
         self.lmstudio_url = globals().get("LMSTUDIO_URL", "http://localhost:1234/v1/chat/completions")
 
     @traceable(name="llm_generate", run_type="llm")
-    def generate(self, prompt: str, max_tokens: int | None = None) -> str:
+    def generate(
+        self,
+        prompt: str,
+        max_tokens: int | None = None,
+        model: str | None = None,
+    ) -> str:
         """Generates a text response from the configured LLM provider."""
         token_cap = max(1, int(max_tokens or self.default_max_tokens))
+        selected_model = (model or self.model).strip() if model else self.model
         logger.debug(
             "Calling LLM provider=%s model=%s max_tokens=%s",
             self.provider,
-            self.model,
+            selected_model,
             token_cap,
         )
 
@@ -71,7 +77,7 @@ class LLMClient:
                     "OpenAI client not initialized. Check OPENAI_API_KEY and package installation."
                 )
             response = openai_client.chat.completions.create(
-                model=self.model,
+                model=selected_model,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=self.temperature,
                 max_tokens=token_cap,
@@ -84,7 +90,7 @@ class LLMClient:
                     "Groq client not initialized. Check GROQ_API_KEY and package installation."
                 )
             response = groq_client.chat.completions.create(
-                model=self.model,
+                model=selected_model,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=self.temperature,
                 max_tokens=token_cap,
@@ -93,7 +99,7 @@ class LLMClient:
 
         elif self.provider == "ollama":
             payload = {
-                "model": self.model,
+                "model": selected_model,
                 "prompt": prompt,
                 "stream": False,
                 "options": {
@@ -114,7 +120,7 @@ class LLMClient:
 
         elif self.provider == "lmstudio":
             payload = {
-                "model": self.model,
+                "model": selected_model,
                 "messages": [{"role": "user", "content": prompt}],
                 "temperature": self.temperature,
                 "max_tokens": token_cap,
